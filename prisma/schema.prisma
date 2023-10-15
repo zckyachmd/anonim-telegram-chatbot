@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users model
+model User {
+  id        Int      @id @default(autoincrement())
+  userId    String   @unique
+  username  String?  @unique
+  language  String?  @default("en")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi ke tabel Chat
+  chats    Chat[] // Satu user dapat memiliki banyak chats
+  partners Chat[] @relation("partner") // Satu user bisa menjadi partner dalam banyak chats
+}
+
+// Enum untuk status chat
+enum ChatStatus {
+  active
+  waiting
+  ended
+}
+
+// Chat model for connecting two users
+model Chat {
+  id        Int        @id @default(autoincrement())
+  userId    Int // Kolom userId di Chat berelasi dengan kolom id di User
+  partnerId Int? // Kolom partnerId di Chat berelasi dengan kolom id di User (opsional)
+  status    ChatStatus // Menggunakan enum untuk status chat
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relasi ke tabel User 
+  user    User  @relation(fields: [userId], references: [id])
+  partner User? @relation("partner", fields: [partnerId], references: [id])
+}

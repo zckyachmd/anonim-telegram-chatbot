@@ -1,0 +1,24 @@
+# Logs
+logs
+*.log
+
+# Dependency directories
+node_modules/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Environment variables
+.env
+
+# macOS-specific files
+.DS_Store
+
+# Prisma
+prisma/migrations

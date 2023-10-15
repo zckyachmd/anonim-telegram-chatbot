@@ -2,9 +2,12 @@
   "name": "anonim-chatbot",
   "version": "1.0.0",
   "description": "Anonymous Telegram Chatbot",
-  "main": "index.js",
+  "main": "app.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "pm2 start app.js --name anonim-chatbot",
+    "stop": "pm2 stop anonim-chatbot",
+    "dev": "pm2 start app.js --name anonim-chatbot --watch --time --log-date-format 'DD-MM HH:mm:ss.SSS' && pm2 monit"
   },
   "keywords": [
     "telegram",
@@ -12,5 +15,14 @@
     "anonymous"
   ],
   "author": "Zacky Achmad",
-  "license": "ISC"
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^5.4.2",
+    "telegraf": "^4.14.0",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.4.2"
+  }
 }
