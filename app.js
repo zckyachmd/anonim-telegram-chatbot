@@ -1,13 +1,10 @@
-// Import modul yang diperlukan
 import logger from "./src/logger.js";
 import { bot } from "./src/bot.js";
-import "./src/cron.js"; // Import cron jobs
+import "./src/cron.js";
 
 // Fungsi untuk menangani kesalahan secara global
 process.on("unhandledRejection", (err) => {
   logger.error("Unhandled Rejection:", err);
-
-  // Proses lainnya, misalnya mengirim notifikasi atau logging ke sistem monitoring
   process.exit(1);
 });
 
@@ -15,21 +12,51 @@ process.on("unhandledRejection", (err) => {
 process.on("SIGINT", () => {
   logger.info("✋ Gracefully shutting down bot...");
   bot.stop("SIGINT");
-
-  // Lakukan proses pembersihan atau penyimpanan data terakhir jika diperlukan
   process.exit(0);
 });
 
-// Memulai bot
-async function app() {
-  try {
-    // Jalankan bot
-    logger.info("🤖 Starting bot...");
-    await bot.launch();
-  } catch (error) {
-    logger.error("❌ Error starting the bot:", error);
+// Memulai bot dengan mencoba terhubung ke internet beberapa kali sebelum menyerah
+async function startBot() {
+  const maxRetries = 3;
+  let retryCount = 0;
+
+  while (retryCount < maxRetries) {
+    try {
+      // Jalankan bot
+      logger.info(
+        `🤖 Attempting to start bot (Attempt ${
+          retryCount + 1
+        } of ${maxRetries})...`
+      );
+
+      // Mengecek status bot apakah berhasil terhubung ke internet
+      const botInfo = await bot.telegram.getMe();
+      if (botInfo && botInfo.username) {
+        logger.info(
+          `🚀 Bot started successfully! Username: @${botInfo.username}`
+        );
+        await bot.launch();
+        break; // Jika berhasil terhubung, keluar dari loop
+      } else {
+        throw new Error("Bot launch failed: Unable to get bot info.");
+      }
+    } catch (error) {
+      logger.error(
+        `❌ Error starting the bot (Attempt ${
+          retryCount + 1
+        } of ${maxRetries}):`,
+        error
+      );
+      retryCount++;
+      await new Promise((resolve) => setTimeout(resolve, 15000)); // Tunggu 15 detik sebelum mencoba lagi
+    }
+  }
+
+  if (retryCount === maxRetries) {
+    logger.error("❌ Failed to start bot after maximum retries. Exiting...");
+    process.exit(1);
   }
 }
 
-// Panggil fungsi untuk memulai bot
-app();
+// Panggil fungsi untuk memulai bot dengan mencoba terhubung ke internet beberapa kali
+startBot();
