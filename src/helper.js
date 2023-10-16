@@ -1,3 +1,5 @@
+import { CronJob } from "cron";
+
 /**
  * Check if user is admin
  *
@@ -24,4 +26,21 @@ export const formatUptime = (uptime) => {
   const seconds = Math.floor(uptime % 60);
 
   return `${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+};
+
+/**
+ * Create cron job
+ *
+ * @param {string} schedule
+ * @param {function} task
+ * @param {boolean} startImmediately
+ * @param {string} timeZone
+ */
+export const createCronJob = (
+  schedule,
+  task = () => {},
+  startImmediately = true,
+  timeZone = process.env.APP_TIMEZONE || "UTC"
+) => {
+  new CronJob(schedule, task, null, startImmediately, timeZone);
 };

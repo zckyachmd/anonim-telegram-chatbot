@@ -1,6 +1,7 @@
 // Import modul yang diperlukan
-import { bot } from "./src/bot.js";
 import logger from "./src/logger.js";
+import { bot } from "./src/bot.js";
+import "./src/cron.js"; // Import cron jobs
 
 // Fungsi untuk menangani kesalahan secara global
 process.on("unhandledRejection", (err) => {
@@ -22,6 +23,7 @@ process.on("SIGINT", () => {
 // Memulai bot
 async function app() {
   try {
+    // Jalankan bot
     logger.info("🤖 Starting bot...");
     await bot.launch();
   } catch (error) {

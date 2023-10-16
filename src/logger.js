@@ -20,7 +20,7 @@ const transport = new winstonDailyRotateFile({
   datePattern: "YYYY-MM-DD",
   zippedArchive: true,
   maxSize: "20m", // Ukuran maksimal satu file log (dalam bytes)
-  maxFiles: "14d", // Masa simpan file log (dalam hari)
+  maxFiles: "7d", // Masa simpan file log (dalam hari)
 });
 
 // Konfigurasi transport untuk konsol (console)

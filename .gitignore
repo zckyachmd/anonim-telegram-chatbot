@@ -2,6 +2,9 @@
 logs
 *.log
 
+# Backups directory
+backup/
+
 # Dependency directories
 node_modules/
 
@@ -19,6 +22,3 @@ pids
 
 # macOS-specific files
 .DS_Store
-
-# Prisma
-prisma/migrations

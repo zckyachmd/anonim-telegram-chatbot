@@ -1,6 +1,6 @@
 import logger from "./logger.js";
 import middleware from "./middleware.js";
-import { findUser, findUserAndChat } from "./model.js";
+import { findUser, findUserAndChat } from "./database.js";
 import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import {
@@ -30,33 +30,35 @@ const handleIncomingMessage = async (ctx, messageType) => {
   // Kirim pesan ke chat partner
   switch (messageType) {
     case "text":
-      if (ctx.message.text) {
-        await ctx.telegram.sendMessage(
-          partnerChat.userId,
-          ctx.message.text.toString()
+      // Check if message contains command
+      const containsCommand = ctx.message.text.toString().match(/\/\S+/g);
+      if (containsCommand) {
+        logger.info(
+          `👤 User [${ctx.message.from.id}]: Sent command to another user.`
         );
+        return;
       }
+
+      // Handle text
+      await ctx.telegram.sendMessage(
+        partnerChat.userId,
+        ctx.message.text.toString()
+      );
       break;
     case "sticker":
       // Handle sticker
-      if (ctx.message.sticker) {
-        const sticker = ctx.message.sticker.file_id;
-        await ctx.telegram.sendSticker(partnerChat.userId, sticker);
-      }
+      const sticker = ctx.message.sticker.file_id;
+      await ctx.telegram.sendSticker(partnerChat.userId, sticker);
       break;
     case "photo":
       // Handle photo
-      if (ctx.message.photo) {
-        const photo = ctx.message.photo[0].file_id;
-        await ctx.telegram.sendPhoto(partnerChat.userId, photo);
-      }
+      const photo = ctx.message.photo[0].file_id;
+      await ctx.telegram.sendPhoto(partnerChat.userId, photo);
       break;
     case "voice":
       // Handle voice
-      if (ctx.message.voice) {
-        const voice = ctx.message.voice.file_id;
-        await ctx.telegram.sendVoice(partnerChat.userId, voice);
-      }
+      const voice = ctx.message.voice.file_id;
+      await ctx.telegram.sendVoice(partnerChat.userId, voice);
     default:
       // Log error
       logger.error("Error handling message:", error);

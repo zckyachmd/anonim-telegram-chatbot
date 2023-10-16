@@ -1,5 +1,5 @@
-import prisma from "./database.js";
 import logger from "./logger.js";
+import { prisma } from "./database.js";
 import { getSystemStatus } from "./status.js";
 import { isAdmin } from "./helper.js";
 
