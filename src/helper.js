@@ -44,3 +44,17 @@ export const createCronJob = (
 ) => {
   new CronJob(schedule, task, null, startImmediately, timeZone);
 };
+
+/**
+ * Generate inline keyboard
+ *
+ * @param {object} buttons
+ * @returns {object}
+ */
+export const generateInlineKeyboard = (buttons) => {
+  return {
+    reply_markup: {
+      inline_keyboard: buttons,
+    },
+  };
+};

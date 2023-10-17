@@ -1,6 +1,6 @@
 import logger from "./logger.js";
 import { getSystemStatus, setSystemStatus } from "./status.js";
-import { isAdmin, formatUptime } from "./helper.js";
+import { isAdmin, formatUptime, generateInlineKeyboard } from "./helper.js";
 import {
   prisma,
   findUser,
@@ -10,6 +10,45 @@ import {
   findChat,
 } from "./database.js";
 
+const inlineKeyboards = {
+  start: [
+    [
+      {
+        text: "🔍 Cari kawan",
+        callback_data: "search",
+      },
+      {
+        text: "❓ Bantuan",
+        callback_data: "help",
+      },
+    ],
+  ],
+  search: [
+    [
+      {
+        text: "🔍 Cari kawan",
+        callback_data: "search",
+      },
+    ],
+  ],
+  cancel: [
+    [
+      {
+        text: "❌ Batalkan pencarian",
+        callback_data: "end",
+      },
+    ],
+  ],
+  end: [
+    [
+      {
+        text: "❌ Akhiri obrolan",
+        callback_data: "end",
+      },
+    ],
+  ],
+};
+
 /**
  * Start command handler
  *
@@ -18,7 +57,8 @@ import {
 export const startCommand = async (ctx) => {
   try {
     await ctx.reply(
-      `Hai @${ctx.message.from.username}! Selamat datang di ${ctx.botInfo.first_name}!\n\nKetik /search untuk mencari kawan ngobrol.`
+      `Hai @${ctx.message.from.username}! Selamat datang di ${ctx.botInfo.first_name}!`,
+      generateInlineKeyboard(inlineKeyboards.start)
     );
   } catch (error) {
     logger.error("Error handling start command:", error);
@@ -37,12 +77,14 @@ export const searchCommand = async (ctx) => {
 
     // Jika user sedang aktif dalam chat atau menunggu, kirim pesan ke pengguna
     if (chatUser) {
-      const response =
+      await ctx.reply(
         chatUser.status == "waiting"
-          ? "Menunggu kawan ngobrol... \n\nKetik /end untuk membatalkan pencarian."
-          : "Kamu sedang aktif dalam chat atau menunggu kawan ngobrol. \n\nKetik /end untuk mengakhiri chat.";
-
-      await ctx.reply(response);
+          ? "Menunggu kawan ngobrol..."
+          : "Kamu sedang aktif dalam chat atau menunggu kawan ngobrol.",
+        chatUser.status == "waiting"
+          ? generateInlineKeyboard(inlineKeyboards.cancel)
+          : generateInlineKeyboard(inlineKeyboards.end)
+      );
       return;
     }
 
@@ -67,13 +109,13 @@ export const searchCommand = async (ctx) => {
       // Jika pasangan obrolan sama, lanjutkan ke iterasi berikutnya
       if (isSamePartner) {
         console.info(
-          `👤 User [${ctx.userId}]: Same partner with ${findChat.user.userId}`
+          `👤 User [${ctx.message.from.id}]: Same partner with ${findChat.user.userId}`
         );
         continue;
       }
 
       const chatId = findChat.id;
-      const response = `Kawan ngobrol ditemukan!\n\nKetik /end untuk mengakhiri chat.`;
+      const response = "Kawan ngobrol ditemukan!";
       await prisma.$transaction(async (prismaClient) => {
         // Memulai transaksi
         const transactionPrisma = prismaClient;
@@ -90,7 +132,7 @@ export const searchCommand = async (ctx) => {
         });
 
         // Kirim pesan ke pengguna
-        await ctx.reply(response);
+        await ctx.reply(response, generateInlineKeyboard(inlineKeyboards.end));
 
         // Temukan userId dari partner chat
         const foundUserId =
@@ -101,7 +143,11 @@ export const searchCommand = async (ctx) => {
         // Kirim pesan ke partner chat
         if (foundUserId) {
           const partnerChat = await findUser(foundUserId);
-          await ctx.telegram.sendMessage(partnerChat.userId, response);
+          await ctx.telegram.sendMessage(
+            partnerChat.userId,
+            response,
+            generateInlineKeyboard(inlineKeyboards.end)
+          );
         }
       });
 
@@ -117,9 +163,10 @@ export const searchCommand = async (ctx) => {
       },
     });
 
-    // Pesan yang akan dikirim ke pengguna
+    // Kirim pesan ke pengguna, dengan inline keyboard
     await ctx.reply(
-      `Mencari kawan ngobrol...\n\nKetik /end untuk membatalkan pencarian.`
+      `Mencari kawan ngobrol...`,
+      generateInlineKeyboard(inlineKeyboards.cancel)
     );
   } catch (error) {
     // Tangani kesalahan dengan mencetak pesan kesalahan
@@ -133,9 +180,6 @@ export const searchCommand = async (ctx) => {
  * @param {import("telegraf").Context} ctx
  */
 export const endCommand = async (ctx) => {
-  // Pesan untuk mencari kawan ngobrol baru
-  const newPartnerMessage = `\n\nKetik /search untuk mencari kawan ngobrol.`;
-
   try {
     // Temukan chat partner yang aktif dalam satu query
     await prisma.$transaction(async (prisma) => {
@@ -143,7 +187,8 @@ export const endCommand = async (ctx) => {
 
       if (!chat) {
         await ctx.reply(
-          `Kamu tidak sedang chat dengan siapapun.` + newPartnerMessage
+          `Kamu tidak sedang chat dengan siapapun.`,
+          generateInlineKeyboard(inlineKeyboards.search)
         );
         return;
       }
@@ -159,7 +204,10 @@ export const endCommand = async (ctx) => {
       });
 
       // Menggunakan mengirim pesan ke pengguna
-      await ctx.reply(`Kamu telah mengakhiri chat.` + newPartnerMessage);
+      await ctx.reply(
+        `Kamu telah mengakhiri chat.`,
+        generateInlineKeyboard(inlineKeyboards.search)
+      );
 
       // Temukan userId dari partner chat
       const foundUserId =
@@ -172,7 +220,8 @@ export const endCommand = async (ctx) => {
         // Mengirim pesan ke partner chat
         await ctx.telegram.sendMessage(
           partnerChat.userId,
-          `Kawan ngobrol telah mengakhiri chat.` + newPartnerMessage
+          `Kawan ngobrol telah mengakhiri chat.`,
+          generateInlineKeyboard(inlineKeyboards.search)
         );
       }
     });
@@ -196,7 +245,8 @@ export const helpCommand = async (ctx) => {
         "/end - Akhiri chat dengan kawan ngobrol\n" +
         "/help - Tampilkan bantuan dan daftar perintah\n\n" +
         "---\n\n" +
-        "Made with hands in earth with love by @zckyachmd. Contact for support or feedback!"
+        "Made with hands in earth with love by @zckyachmd. Contact for support or feedback!",
+      generateInlineKeyboard(inlineKeyboards.start)
     );
   } catch (error) {
     logger.error("Error handling help command:", error);

@@ -17,6 +17,21 @@ process.on("SIGINT", () => {
 
 // Memulai bot dengan mencoba terhubung ke internet beberapa kali sebelum menyerah
 async function startBot() {
+  console.log("Starting...");
+  console.log(`############################################################`);
+  console.log(`#                                                          #`);
+  console.log(`#          ███████╗ █████╗  ██████╗██╗  ██╗██╗   ██╗       #`);
+  console.log(`#          ╚══███╔╝██╔══██╗██╔════╝██║ ██╔╝╚██╗ ██╔╝       #`);
+  console.log(`#            ███╔╝ ███████║██║     █████╔╝  ╚████╔╝        #`);
+  console.log(`#           ███╔╝  ██╔══██║██║     ██╔═██╗   ╚██╔╝         #`);
+  console.log(`#          ███████╗██║  ██║╚██████╗██║  ██╗   ██║          #`);
+  console.log(`#          ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝   ╚═╝          #`);
+  console.log(`#                                                          #`);
+  console.log(`#  Anonim ChatBot on Telegram (https://t.me/temukawanbot)  #`);
+  console.log(`#  Version: 1.1.2                                          #`);
+  console.log(`#                                                          #`);
+  console.log(`############################################################`);
+
   const maxRetries = 3;
   let retryCount = 0;
 

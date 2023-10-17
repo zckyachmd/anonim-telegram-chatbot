@@ -61,7 +61,7 @@ const handleIncomingMessage = async (ctx, messageType) => {
       await ctx.telegram.sendVoice(partnerChat.userId, voice);
     default:
       // Log error
-      logger.error("Error handling message:", error);
+      logger.error(`👤 User [${ctx.message.from.id}]: Message not supported!`);
 
       // Kirim pesan ke user jika terjadi error 400
       if (error.code == 400) {
@@ -69,6 +69,12 @@ const handleIncomingMessage = async (ctx, messageType) => {
       }
       break;
   }
+};
+
+const callbackActions = {
+  search: searchCommand,
+  end: endCommand,
+  help: helpCommand,
 };
 
 // Inisialisasi bot
@@ -102,6 +108,27 @@ bot.on(message("photo"), async (ctx) => {
 // Voice handler
 bot.on(message("voice"), async (ctx) => {
   await handleIncomingMessage(ctx, "voice");
+});
+
+// Callback query handler
+bot.on("callback_query", async (ctx) => {
+  try {
+    // Find action
+    const action = callbackActions[ctx.callbackQuery.data];
+    if (!action) {
+      throw new Error("Action not found!");
+    }
+
+    // Handle action
+    await action(ctx);
+    await ctx.telegram.editMessageReplyMarkup(
+      ctx.chat.id,
+      ctx.callbackQuery.message.message_id,
+      null
+    );
+  } catch (error) {
+    logger.error(`👤 User [${ctx.callbackQuery.from.id}]: ${error.message}`);
+  }
 });
 
 // Export bot
