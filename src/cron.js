@@ -5,8 +5,8 @@ import { exec } from "child_process";
 // Backup database setiap jam 00:00
 createCronJob("0 0 * * *", function () {
   // Check if database backup is enabled
-  if (process.env.DATABASE_BACKUP != "true") {
-    logger.info("Automatic database backup is disabled!");
+  if (process.env.DATABASE_BACKUP != (true || "true")) {
+    logger.info("💾 Automatic database backup is disabled!");
     return;
   }
 

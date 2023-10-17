@@ -1,5 +1,5 @@
 import logger from "./logger.js";
-import { prisma } from "./database.js";
+import { prisma, findUser } from "./database.js";
 import { getSystemStatus } from "./status.js";
 import { isAdmin } from "./helper.js";
 
@@ -7,20 +7,32 @@ const middleware = async (ctx, next) => {
   try {
     // Save user to database
     await prisma.$transaction(async (prisma) => {
-      await prisma.user.upsert({
-        where: {
-          userId: ctx.message.from.id.toString(),
-        },
-        update: {
-          username: ctx.message.from.username,
-          language: ctx.message.from.language_code,
-        },
-        create: {
-          userId: ctx.message.from.id.toString(),
-          username: ctx.message.from.username,
-          language: ctx.message.from.language_code,
-        },
-      });
+      let existingUser = await findUser(ctx.message.from.id.toString());
+
+      // Check if user is not found
+      if (!existingUser) {
+        existingUser = await prisma.user.create({
+          data: {
+            userId: ctx.message.from.id.toString(),
+            username: ctx.message.from.username,
+            language: ctx.message.from.language_code,
+          },
+        });
+      } else {
+        // Update user
+        await prisma.user.update({
+          where: {
+            userId: ctx.message.from.id.toString(),
+          },
+          data: {
+            username: ctx.message.from.username,
+            language: ctx.message.from.language_code,
+          },
+        });
+      }
+
+      // Add user to ctx
+      ctx.userId = existingUser.id;
     });
 
     // Show log in console

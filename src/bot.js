@@ -1,6 +1,6 @@
 import logger from "./logger.js";
 import middleware from "./middleware.js";
-import { findUser, findUserAndChat } from "./database.js";
+import { findUser, findChat } from "./database.js";
 import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import {
@@ -12,7 +12,7 @@ import {
 } from "./commands.js";
 
 const handleIncomingMessage = async (ctx, messageType) => {
-  const { user, chat } = await findUserAndChat(ctx.message.from.id.toString());
+  const chat = await findChat(ctx.userId);
 
   // Jika chat tidak ditemukan, berarti user belum memulai chat
   if (!chat) {
@@ -24,7 +24,7 @@ const handleIncomingMessage = async (ctx, messageType) => {
 
   // Jika chat ditemukan, temukan chat partner
   const foundUserId =
-    chat.user.id == user.id ? chat.partner?.userId : chat.user.userId;
+    chat.user.id == ctx.userId ? chat.partner?.userId : chat.user.userId;
   const partnerChat = await findUser(foundUserId);
 
   // Kirim pesan ke chat partner

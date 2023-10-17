@@ -32,11 +32,8 @@ export const startCommand = async (ctx) => {
  */
 export const searchCommand = async (ctx) => {
   try {
-    // Temukan user berdasarkan userId (Telegram user ID)
-    const user = await findUser(ctx.message.from.id.toString());
-
     // Temukan apakah user sedang aktif dalam chat atau menunggu
-    const chatUser = await findUserInChatorWaiting(user.id);
+    const chatUser = await findUserInChatorWaiting(ctx.userId);
 
     // Jika user sedang aktif dalam chat atau menunggu, kirim pesan ke pengguna
     if (chatUser) {
@@ -50,7 +47,7 @@ export const searchCommand = async (ctx) => {
     }
 
     // Temukan chat yang masih menunggu dan tidak memiliki partnerId
-    const waitingChats = await findWaitingChat(user.id);
+    const waitingChats = await findWaitingChat(ctx.userId);
 
     for (
       let retryCount = 0;
@@ -63,14 +60,14 @@ export const searchCommand = async (ctx) => {
 
       // Memastikan pasangan obrolan yang ditemukan tidak sama dengan pasangan obrolan sebelumnya
       const isSamePartner = await findIsUserHasChatWithPartner(
-        user.id,
+        ctx.userId,
         findChat.user.id
       );
 
       // Jika pasangan obrolan sama, lanjutkan ke iterasi berikutnya
       if (isSamePartner) {
         console.info(
-          `👤 User [${user.userId}]: Same partner with ${findChat.user.userId}`
+          `👤 User [${ctx.userId}]: Same partner with ${findChat.user.userId}`
         );
         continue;
       }
@@ -87,7 +84,7 @@ export const searchCommand = async (ctx) => {
             id: chatId,
           },
           data: {
-            partnerId: user.id,
+            partnerId: ctx.userId,
             status: "active",
           },
         });
@@ -97,7 +94,7 @@ export const searchCommand = async (ctx) => {
 
         // Temukan userId dari partner chat
         const foundUserId =
-          findChat.user.id == user.id
+          findChat.user.id == ctx.userId
             ? findChat.partner?.userId
             : findChat.user.userId;
 
@@ -115,7 +112,7 @@ export const searchCommand = async (ctx) => {
     // Membuat chat baru dengan status "waiting"
     await prisma.chat.create({
       data: {
-        userId: user.id,
+        userId: ctx.userId,
         status: "waiting",
       },
     });
@@ -142,8 +139,7 @@ export const endCommand = async (ctx) => {
   try {
     // Temukan chat partner yang aktif dalam satu query
     await prisma.$transaction(async (prisma) => {
-      const user = await findUser(ctx.message.from.id.toString());
-      const chat = await findChat(user.id, true);
+      const chat = await findChat(ctx.userId, true);
 
       if (!chat) {
         await ctx.reply(
@@ -167,7 +163,7 @@ export const endCommand = async (ctx) => {
 
       // Temukan userId dari partner chat
       const foundUserId =
-        chat.user.id == user.id ? chat.partner?.userId : chat.user.userId;
+        chat.user.id == ctx.userId ? chat.partner?.userId : chat.user.userId;
 
       if (foundUserId) {
         // Temukan chat partner yang aktif dalam satu query

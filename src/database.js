@@ -1,26 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 
+/**
+ * Prisma Client instance
+ */
 export const prisma = new PrismaClient();
 
 export const findUser = async (userId) => {
   return await prisma.user.findUnique({
     where: { userId: userId },
   });
-};
-
-export const findUserAndChat = async (userId) => {
-  const user = await findUser(userId);
-  const chat = await prisma.chat.findFirst({
-    where: {
-      OR: [{ userId: user.id }, { partnerId: user.id }],
-      status: "active",
-    },
-    include: {
-      user: true,
-      partner: true,
-    },
-  });
-  return { user, chat };
 };
 
 export const findChat = async (userId, waiting = false) => {

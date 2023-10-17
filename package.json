@@ -7,6 +7,7 @@
   "scripts": {
     "start": "pm2 start app.js --name anonim-chatbot",
     "stop": "pm2 stop anonim-chatbot",
+    "restart": "pm2 restart anonim-chatbot",
     "dev": "pm2 start app.js --name anonim-chatbot --watch --time --log-date-format 'DD-MM HH:mm:ss.SSS' && pm2 monit"
   },
   "keywords": [
