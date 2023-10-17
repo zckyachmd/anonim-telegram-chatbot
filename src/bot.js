@@ -6,13 +6,15 @@ import { message } from "telegraf/filters";
 import {
   startCommand,
   searchCommand,
+  blockCommand,
+  unblockCommand,
   endCommand,
   helpCommand,
   botCommand,
 } from "./commands.js";
 
 const handleIncomingMessage = async (ctx, messageType) => {
-  const chat = await findChat(ctx.userId);
+  const chat = await findChat(ctx.id);
 
   // Jika chat tidak ditemukan, berarti user belum memulai chat
   if (!chat) {
@@ -24,7 +26,7 @@ const handleIncomingMessage = async (ctx, messageType) => {
 
   // Jika chat ditemukan, temukan chat partner
   const foundUserId =
-    chat.user.id == ctx.userId ? chat.partner?.userId : chat.user.userId;
+    chat.user.id == ctx.id ? chat.partner?.userId : chat.user.userId;
   const partnerChat = await findUser(foundUserId);
 
   // Kirim pesan ke chat partner
@@ -33,9 +35,7 @@ const handleIncomingMessage = async (ctx, messageType) => {
       // Check if message contains command
       const containsCommand = ctx.message.text.toString().match(/\/\S+/g);
       if (containsCommand) {
-        logger.info(
-          `👤 User [${ctx.message.from.id}]: Sent command to another user.`
-        );
+        logger.info(`👤 User [${ctx.userId}]: Sent command to another user.`);
         return;
       }
 
@@ -61,7 +61,7 @@ const handleIncomingMessage = async (ctx, messageType) => {
       await ctx.telegram.sendVoice(partnerChat.userId, voice);
     default:
       // Log error
-      logger.error(`👤 User [${ctx.message.from.id}]: Message not supported!`);
+      logger.error(`👤 User [${ctx.userId}]: Message not supported!`);
 
       // Kirim pesan ke user jika terjadi error 400
       if (error.code == 400) {
@@ -73,6 +73,8 @@ const handleIncomingMessage = async (ctx, messageType) => {
 
 const callbackActions = {
   search: searchCommand,
+  block: blockCommand,
+  unblock: unblockCommand,
   end: endCommand,
   help: helpCommand,
 };
@@ -86,6 +88,8 @@ bot.use(middleware);
 // Command handler
 bot.command("start", startCommand);
 bot.command("search", searchCommand);
+bot.command("block", blockCommand);
+bot.command("unblock", unblockCommand);
 bot.command("end", endCommand);
 bot.command("help", helpCommand);
 bot.command("bot", botCommand);
@@ -119,13 +123,15 @@ bot.on("callback_query", async (ctx) => {
       throw new Error("Action not found!");
     }
 
-    // Handle action
-    await action(ctx);
-    await ctx.telegram.editMessageReplyMarkup(
-      ctx.chat.id,
-      ctx.callbackQuery.message.message_id,
-      null
-    );
+    // Handle action and remove inline keyboard
+    await Promise.all([
+      action(ctx),
+      ctx.telegram.editMessageReplyMarkup(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id,
+        null
+      ),
+    ]);
   } catch (error) {
     logger.error(`👤 User [${ctx.callbackQuery.from.id}]: ${error.message}`);
   }

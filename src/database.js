@@ -11,11 +11,51 @@ export const findUser = async (userId) => {
   });
 };
 
+export const findBlockedUser = async (userId, partnerId) => {
+  return await prisma.block.findMany({
+    where: {
+      OR: [
+        { userId: userId, blockedId: partnerId },
+        { userId: partnerId, blockedId: userId },
+      ],
+    },
+  });
+};
+
+export const countBlockedUser = async (userId) => {
+  return await prisma.block.count({
+    where: {
+      userId: userId,
+    },
+  });
+};
+
+export const deleteBlockedUser = async (userId) => {
+  return await prisma.block.deleteMany({
+    where: {
+      userId: userId,
+    },
+  });
+};
+
 export const findChat = async (userId, waiting = false) => {
   return await prisma.chat.findFirst({
     where: {
       OR: [{ userId: userId }, { partnerId: userId }],
       status: !waiting ? "active" : { in: ["active", "waiting"] },
+    },
+    include: {
+      user: true,
+      partner: true,
+    },
+  });
+};
+
+export const findActiveChat = async (userId) => {
+  return await prisma.chat.findFirst({
+    where: {
+      OR: [{ userId: userId }, { partnerId: userId }],
+      status: "active",
     },
     include: {
       user: true,
@@ -38,9 +78,6 @@ export const findUserInChatorWaiting = async (userId) => {
         },
       ],
     },
-    orderBy: {
-      createdAt: "desc",
-    },
   });
 };
 
@@ -56,6 +93,7 @@ export const findWaitingChat = async (userId) => {
       user: true,
       partner: true,
     },
+    orderBy: { createdAt: "desc" },
     take: 10,
   });
 };

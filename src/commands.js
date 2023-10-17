@@ -8,6 +8,10 @@ import {
   findUserInChatorWaiting,
   findIsUserHasChatWithPartner,
   findChat,
+  findActiveChat,
+  findBlockedUser,
+  countBlockedUser,
+  deleteBlockedUser,
 } from "./database.js";
 
 const inlineKeyboards = {
@@ -45,14 +49,24 @@ const inlineKeyboards = {
         text: "❌ Akhiri obrolan",
         callback_data: "end",
       },
+      {
+        text: "🚫 Block",
+        callback_data: "block",
+      },
+    ],
+  ],
+  help: [
+    [
+      {
+        text: "🗑️ Hapus semua daftar blokir",
+        callback_data: "unblock",
+      },
     ],
   ],
 };
 
 /**
  * Start command handler
- *
- * @param {import("telegraf").Context} ctx
  */
 export const startCommand = async (ctx) => {
   try {
@@ -67,20 +81,18 @@ export const startCommand = async (ctx) => {
 
 /**
  * Search command handler
- *
- * @param {import("telegraf").Context} ctx
  */
 export const searchCommand = async (ctx) => {
   try {
     // Temukan apakah user sedang aktif dalam chat atau menunggu
-    const chatUser = await findUserInChatorWaiting(ctx.userId);
+    const chatUser = await findUserInChatorWaiting(ctx.id);
 
     // Jika user sedang aktif dalam chat atau menunggu, kirim pesan ke pengguna
     if (chatUser) {
       await ctx.reply(
         chatUser.status == "waiting"
           ? "Menunggu kawan ngobrol..."
-          : "Kamu sedang aktif dalam chat atau menunggu kawan ngobrol.",
+          : "Kamu sedang aktif dalam ngobrol!",
         chatUser.status == "waiting"
           ? generateInlineKeyboard(inlineKeyboards.cancel)
           : generateInlineKeyboard(inlineKeyboards.end)
@@ -89,7 +101,7 @@ export const searchCommand = async (ctx) => {
     }
 
     // Temukan chat yang masih menunggu dan tidak memiliki partnerId
-    const waitingChats = await findWaitingChat(ctx.userId);
+    const waitingChats = await findWaitingChat(ctx.id);
 
     for (
       let retryCount = 0;
@@ -99,18 +111,34 @@ export const searchCommand = async (ctx) => {
       // Temukan chat yang menunggu secara acak
       const randomIndex = Math.floor(Math.random() * waitingChats.length);
       const findChat = waitingChats[randomIndex];
+      const { isSamePartner, isBlockedUser } = await prisma.$transaction(
+        async (findChat) => {
+          // Mengecek apakah user memiliki chat dengan partner yang sama
+          const checkSamePartner = await findIsUserHasChatWithPartner(
+            ctx.id,
+            findChat.user.id
+          );
 
-      // Memastikan pasangan obrolan yang ditemukan tidak sama dengan pasangan obrolan sebelumnya
-      const isSamePartner = await findIsUserHasChatWithPartner(
-        ctx.userId,
-        findChat.user.id
+          // Mengecek apakah user telah memblokir partner
+          const checkBlockUserResult = await findBlockedUser(
+            ctx.id,
+            findChat.user.id
+          );
+
+          // Mengembalikan hasil
+          return {
+            isSamePartner: checkSamePartner,
+            isBlockedUser: checkBlockUserResult,
+          };
+        }
       );
 
       // Jika pasangan obrolan sama, lanjutkan ke iterasi berikutnya
-      if (isSamePartner) {
+      if (isSamePartner || isBlockedUser) {
         console.info(
-          `👤 User [${ctx.message.from.id}]: Same partner with ${findChat.user.userId}`
+          `👤 User [${ctx.userId}]: Same or blocked partner with ${findChat.user.userId}`
         );
+
         continue;
       }
 
@@ -126,7 +154,7 @@ export const searchCommand = async (ctx) => {
             id: chatId,
           },
           data: {
-            partnerId: ctx.userId,
+            partnerId: ctx.id,
             status: "active",
           },
         });
@@ -136,7 +164,7 @@ export const searchCommand = async (ctx) => {
 
         // Temukan userId dari partner chat
         const foundUserId =
-          findChat.user.id == ctx.userId
+          findChat.user.id == ctx.id
             ? findChat.partner?.userId
             : findChat.user.userId;
 
@@ -158,14 +186,14 @@ export const searchCommand = async (ctx) => {
     // Membuat chat baru dengan status "waiting"
     await prisma.chat.create({
       data: {
-        userId: ctx.userId,
+        userId: ctx.id,
         status: "waiting",
       },
     });
 
     // Kirim pesan ke pengguna, dengan inline keyboard
     await ctx.reply(
-      `Mencari kawan ngobrol...`,
+      "Mencari kawan ngobrol...",
       generateInlineKeyboard(inlineKeyboards.cancel)
     );
   } catch (error) {
@@ -175,19 +203,83 @@ export const searchCommand = async (ctx) => {
 };
 
 /**
- * End command handler
- *
- * @param {import("telegraf").Context} ctx
+ * Block command handler
  */
-export const endCommand = async (ctx) => {
+export const blockCommand = async (ctx) => {
   try {
-    // Temukan chat partner yang aktif dalam satu query
     await prisma.$transaction(async (prisma) => {
-      const chat = await findChat(ctx.userId, true);
+      const chat = await findActiveChat(ctx.id);
 
       if (!chat) {
         await ctx.reply(
-          `Kamu tidak sedang chat dengan siapapun.`,
+          "Kamu tidak sedang chat dengan siapapun.",
+          generateInlineKeyboard(inlineKeyboards.search)
+        );
+        return;
+      }
+
+      // Temukan userId dari partner chat
+      const foundUserId =
+        chat.user.id == ctx.id ? chat.partner?.id : chat.user.id;
+
+      if (foundUserId) {
+        await Promise.all([
+          // Tambahan blok ke database
+          prisma.block.create({
+            data: {
+              userId: ctx.id,
+              blockedId: foundUserId,
+            },
+          }),
+          // Memperbarui chat yang aktif dan chat partner yang aktif ke status "ended" dalam satu transaksi
+          endCommand(ctx, true),
+        ]);
+      }
+    });
+  } catch (error) {
+    logger.error("Error handling block command:", error);
+  }
+};
+
+/**
+ * Unblock command handler
+ */
+export const unblockCommand = async (ctx) => {
+  try {
+    await prisma.$transaction(async () => {
+      if ((await countBlockedUser(ctx.id)) <= 0) {
+        await ctx.reply(
+          "Kamu tidak memiliki daftar blokir.",
+          generateInlineKeyboard(inlineKeyboards.start)
+        );
+        return;
+      }
+
+      await Promise.all([
+        deleteBlockedUser(ctx.id),
+        ctx.reply(
+          "Semua daftar blokir telah dihapus.",
+          generateInlineKeyboard(inlineKeyboards.start)
+        ),
+      ]);
+    });
+  } catch (error) {
+    console.error("Error in unblock command:", error);
+  }
+};
+
+/**
+ * End command handler
+ */
+export const endCommand = async (ctx, block = false) => {
+  try {
+    // Temukan chat partner yang aktif dalam satu query
+    await prisma.$transaction(async (prisma) => {
+      const chat = await findChat(ctx.id, true);
+
+      if (!chat) {
+        await ctx.reply(
+          "Kamu tidak sedang chat dengan siapapun.",
           generateInlineKeyboard(inlineKeyboards.search)
         );
         return;
@@ -205,13 +297,15 @@ export const endCommand = async (ctx) => {
 
       // Menggunakan mengirim pesan ke pengguna
       await ctx.reply(
-        `Kamu telah mengakhiri chat.`,
+        block
+          ? "Kamu telah memblokir kawan ngobrol."
+          : "Kamu telah mengakhiri chat.",
         generateInlineKeyboard(inlineKeyboards.search)
       );
 
       // Temukan userId dari partner chat
       const foundUserId =
-        chat.user.id == ctx.userId ? chat.partner?.userId : chat.user.userId;
+        chat.user.id == ctx.id ? chat.partner?.userId : chat.user.userId;
 
       if (foundUserId) {
         // Temukan chat partner yang aktif dalam satu query
@@ -220,7 +314,7 @@ export const endCommand = async (ctx) => {
         // Mengirim pesan ke partner chat
         await ctx.telegram.sendMessage(
           partnerChat.userId,
-          `Kawan ngobrol telah mengakhiri chat.`,
+          "Kawan ngobrol telah mengakhiri chat.",
           generateInlineKeyboard(inlineKeyboards.search)
         );
       }
@@ -232,8 +326,6 @@ export const endCommand = async (ctx) => {
 
 /**
  * Help command handler
- *
- * @param {import("telegraf").Context} ctx
  */
 export const helpCommand = async (ctx) => {
   try {
@@ -242,11 +334,13 @@ export const helpCommand = async (ctx) => {
         "Perintah:\n" +
         "/start - Mulai bot\n" +
         "/search - Cari kawan ngobrol\n" +
+        "/block - Blokir kawan ngobrol saat ini\n" +
+        "/unblock - Hapus semua daftar kawan ngobrol yang diblokir\n" +
         "/end - Akhiri chat dengan kawan ngobrol\n" +
         "/help - Tampilkan bantuan dan daftar perintah\n\n" +
         "---\n\n" +
         "Made with hands in earth with love by @zckyachmd. Contact for support or feedback!",
-      generateInlineKeyboard(inlineKeyboards.start)
+      generateInlineKeyboard(inlineKeyboards.help)
     );
   } catch (error) {
     logger.error("Error handling help command:", error);
@@ -255,13 +349,11 @@ export const helpCommand = async (ctx) => {
 
 /**
  * Bot command handler with argument
- *
- * @param {import("telegraf").Context} ctx
  */
 export const botCommand = async (ctx) => {
   // Check if user is admin
-  if (!isAdmin(ctx.message.from.id.toString())) {
-    logger.info(`👤 User [${ctx.message.from.id}]: Not admin`);
+  if (!isAdmin(ctx.userId.toString())) {
+    logger.info(`👤 User [${ctx.userId}]: Not admin`);
     return;
   }
 
