@@ -38,20 +38,12 @@ const handleIncomingMessage = async (ctx, messageType) => {
       const messageText = !reply
         ? ctx.message.text
         : `Re: ${reply.text}\n---\n${ctx.message.text}`;
-      await ctx.telegram
-        .sendMessage(partnerChat.userId, messageText)
-        .then((response) => {
-          return saveMessage(chat.id, ctx.userData.id, response.message_id);
-        });
+      await ctx.telegram.sendMessage(partnerChat.userId, messageText);
       break;
     case "sticker":
       // Handle sticker
       const stickerId = ctx.message.sticker.file_id;
-      await ctx.telegram
-        .sendSticker(partnerChat.userId, stickerId)
-        .then((response) => {
-          return saveMessage(chat.id, ctx.userData.id, response.message_id);
-        });
+      await ctx.telegram.sendSticker(partnerChat.userId, stickerId);
       break;
     case "photo":
       // Handle photo

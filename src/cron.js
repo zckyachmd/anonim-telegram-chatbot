@@ -1,4 +1,5 @@
 import logger from "./logger.js";
+import { prisma } from "./database.js";
 import { createCronJob } from "./helper.js";
 import { exec } from "child_process";
 
@@ -55,5 +56,16 @@ createCronJob("0 0 * * *", function () {
       return;
     }
     logger.info("✅ Old database backup deleted!");
+  });
+});
+
+// Delete chat ended without partnerId every 5 minutes
+createCronJob("*/5 * * * *", function () {
+  logger.info("🧹 Deleting chat ended without partnerId...");
+  prisma.chat.deleteMany({
+    where: {
+      partnerId: null,
+      status: "ended",
+    },
   });
 });
