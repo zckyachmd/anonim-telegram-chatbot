@@ -12,7 +12,7 @@ export const findUser = async (userId) => {
 };
 
 export const findBlockedUser = async (userId, partnerId) => {
-  return await prisma.block.findMany({
+  return await prisma.block.findFirst({
     where: {
       OR: [
         { userId: userId, blockedId: partnerId },
@@ -61,6 +61,7 @@ export const findActiveChat = async (userId) => {
       user: true,
       partner: true,
     },
+    orderBy: { createdAt: "desc" },
   });
 };
 
@@ -110,6 +111,7 @@ export const findIsUserHasChatWithPartner = async (
         { userId: userId, partnerId: partnerId },
         { userId: partnerId, partnerId: userId },
       ],
+      NOT: { partnerId: null },
       status: "ended",
       createdAt: { gt: limitDate },
     },

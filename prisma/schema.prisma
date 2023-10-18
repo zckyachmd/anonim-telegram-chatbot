@@ -18,11 +18,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relasi ke tabel Chat
-  chats    Chat[]  @relation("chats") // Satu user bisa memiliki banyak chats (relasi 1-n
-  partners Chat[]  @relation("partner") // Satu user bisa menjadi partner dalam banyak chats
-  users    Block[] @relation("users") // Satu user dapat melakukan block pada banyak user
-  blocked  Block[] @relation("blocked") // Satu user dapat diblock oleh banyak user
+  // Relasi table
+  chats    Chat[]  @relation("chats")
+  partners Chat[]  @relation("partner")
+  users    Block[] @relation("users")
+  blocked  Block[] @relation("blocked")
 }
 
 // Enum untuk status chat
@@ -35,13 +35,13 @@ enum ChatStatus {
 // Chat model for connecting two users
 model Chat {
   id        Int        @id @default(autoincrement())
-  userId    Int // Kolom userId di Chat berelasi dengan kolom id di User
-  partnerId Int? // Kolom partnerId di Chat berelasi dengan kolom id di User (opsional)
-  status    ChatStatus // Menggunakan enum untuk status chat
+  userId    Int
+  partnerId Int?
+  status    ChatStatus
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  // Relasi ke tabel User 
+  // Relasi table
   user    User  @relation("chats", fields: [userId], references: [id])
   partner User? @relation("partner", fields: [partnerId], references: [id])
 }
@@ -49,12 +49,12 @@ model Chat {
 // Block model for blocking user from chat
 model Block {
   id        Int      @id @default(autoincrement())
-  userId    Int // Kolom userId di Block berelasi dengan kolom id di User
-  blockedId Int // Kolom blockedId di Block berelasi dengan kolom id di User
+  userId    Int
+  blockedId Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relasi ke tabel User
+  // Relasi table
   user    User @relation("users", fields: [userId], references: [id])
   blocked User @relation("blocked", fields: [blockedId], references: [id])
 }

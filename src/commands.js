@@ -85,7 +85,7 @@ export const startCommand = async (ctx) => {
 export const searchCommand = async (ctx) => {
   try {
     // Temukan apakah user sedang aktif dalam chat atau menunggu
-    const chatUser = await findUserInChatorWaiting(ctx.id);
+    const chatUser = await findUserInChatorWaiting(ctx.userData.id);
 
     // Jika user sedang aktif dalam chat atau menunggu, kirim pesan ke pengguna
     if (chatUser) {
@@ -101,7 +101,7 @@ export const searchCommand = async (ctx) => {
     }
 
     // Temukan chat yang masih menunggu dan tidak memiliki partnerId
-    const waitingChats = await findWaitingChat(ctx.id);
+    const waitingChats = await findWaitingChat(ctx.userData.id);
 
     for (
       let retryCount = 0;
@@ -115,13 +115,13 @@ export const searchCommand = async (ctx) => {
         async (findChat) => {
           // Mengecek apakah user memiliki chat dengan partner yang sama
           const checkSamePartner = await findIsUserHasChatWithPartner(
-            ctx.id,
+            ctx.userData.id,
             findChat.user.id
           );
 
           // Mengecek apakah user telah memblokir partner
           const checkBlockUserResult = await findBlockedUser(
-            ctx.id,
+            ctx.userData.id,
             findChat.user.id
           );
 
@@ -136,7 +136,7 @@ export const searchCommand = async (ctx) => {
       // Jika pasangan obrolan sama, lanjutkan ke iterasi berikutnya
       if (isSamePartner || isBlockedUser) {
         console.info(
-          `👤 User [${ctx.userId}]: Same or blocked partner with ${findChat.user.userId}`
+          `👤 User [${ctx.userData.userId}]: Same or blocked partner with ${findChat.user.userId}`
         );
 
         continue;
@@ -154,7 +154,7 @@ export const searchCommand = async (ctx) => {
             id: chatId,
           },
           data: {
-            partnerId: ctx.id,
+            partnerId: ctx.userData.id,
             status: "active",
           },
         });
@@ -164,7 +164,7 @@ export const searchCommand = async (ctx) => {
 
         // Temukan userId dari partner chat
         const foundUserId =
-          findChat.user.id == ctx.id
+          findChat.user.id == ctx.userData.id
             ? findChat.partner?.userId
             : findChat.user.userId;
 
@@ -186,7 +186,7 @@ export const searchCommand = async (ctx) => {
     // Membuat chat baru dengan status "waiting"
     await prisma.chat.create({
       data: {
-        userId: ctx.id,
+        userId: ctx.userData.id,
         status: "waiting",
       },
     });
@@ -208,7 +208,7 @@ export const searchCommand = async (ctx) => {
 export const blockCommand = async (ctx) => {
   try {
     await prisma.$transaction(async (prisma) => {
-      const chat = await findActiveChat(ctx.id);
+      const chat = await findActiveChat(ctx.userData.id);
 
       if (!chat) {
         await ctx.reply(
@@ -220,14 +220,14 @@ export const blockCommand = async (ctx) => {
 
       // Temukan userId dari partner chat
       const foundUserId =
-        chat.user.id == ctx.id ? chat.partner?.id : chat.user.id;
+        chat.user.id == ctx.userData.id ? chat.partner?.id : chat.user.id;
 
       if (foundUserId) {
         await Promise.all([
           // Tambahan blok ke database
           prisma.block.create({
             data: {
-              userId: ctx.id,
+              userId: ctx.userData.id,
               blockedId: foundUserId,
             },
           }),
@@ -247,7 +247,7 @@ export const blockCommand = async (ctx) => {
 export const unblockCommand = async (ctx) => {
   try {
     await prisma.$transaction(async () => {
-      if ((await countBlockedUser(ctx.id)) <= 0) {
+      if ((await countBlockedUser(ctx.userData.id)) <= 0) {
         await ctx.reply(
           "Kamu tidak memiliki daftar blokir.",
           generateInlineKeyboard(inlineKeyboards.start)
@@ -256,7 +256,7 @@ export const unblockCommand = async (ctx) => {
       }
 
       await Promise.all([
-        deleteBlockedUser(ctx.id),
+        deleteBlockedUser(ctx.userData.id),
         ctx.reply(
           "Semua daftar blokir telah dihapus.",
           generateInlineKeyboard(inlineKeyboards.start)
@@ -275,7 +275,7 @@ export const endCommand = async (ctx, block = false) => {
   try {
     // Temukan chat partner yang aktif dalam satu query
     await prisma.$transaction(async (prisma) => {
-      const chat = await findChat(ctx.id, true);
+      const chat = await findChat(ctx.userData.id, true);
 
       if (!chat) {
         await ctx.reply(
@@ -297,7 +297,7 @@ export const endCommand = async (ctx, block = false) => {
 
       // Menggunakan mengirim pesan ke pengguna
       await ctx.reply(
-        block
+        block == true
           ? "Kamu telah memblokir kawan ngobrol."
           : "Kamu telah mengakhiri chat.",
         generateInlineKeyboard(inlineKeyboards.search)
@@ -305,7 +305,9 @@ export const endCommand = async (ctx, block = false) => {
 
       // Temukan userId dari partner chat
       const foundUserId =
-        chat.user.id == ctx.id ? chat.partner?.userId : chat.user.userId;
+        chat.user.id == ctx.userData.id
+          ? chat.partner?.userId
+          : chat.user.userId;
 
       if (foundUserId) {
         // Temukan chat partner yang aktif dalam satu query
@@ -352,8 +354,8 @@ export const helpCommand = async (ctx) => {
  */
 export const botCommand = async (ctx) => {
   // Check if user is admin
-  if (!isAdmin(ctx.userId.toString())) {
-    logger.info(`👤 User [${ctx.userId}]: Not admin`);
+  if (!isAdmin(ctx.userData.userId.toString())) {
+    logger.info(`👤 User [${ctx.userData.userId}]: Not admin`);
     return;
   }
 
@@ -418,5 +420,25 @@ export const botCommand = async (ctx) => {
   } catch (error) {
     // Log error
     logger.error("Error handling bot command:", error);
+  }
+};
+
+/**
+ * Ping command handler
+ */
+export const pingCommand = async (ctx) => {
+  try {
+    const startTs = new Date().getTime();
+    const message = await ctx.reply("Pong!");
+    const endTs = new Date().getTime();
+    const responseTime = endTs - startTs;
+    await ctx.telegram.editMessageText(
+      ctx.chat.id,
+      message.message_id,
+      undefined,
+      `Pong! (${responseTime} ms)`
+    );
+  } catch (error) {
+    logger.error("Error handling ping command:", error);
   }
 };

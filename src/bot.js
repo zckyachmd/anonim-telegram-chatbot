@@ -11,10 +11,11 @@ import {
   endCommand,
   helpCommand,
   botCommand,
+  pingCommand,
 } from "./commands.js";
 
 const handleIncomingMessage = async (ctx, messageType) => {
-  const chat = await findChat(ctx.id);
+  const chat = await findChat(ctx.userData.id);
 
   // Jika chat tidak ditemukan, berarti user belum memulai chat
   if (!chat) {
@@ -26,48 +27,50 @@ const handleIncomingMessage = async (ctx, messageType) => {
 
   // Jika chat ditemukan, temukan chat partner
   const foundUserId =
-    chat.user.id == ctx.id ? chat.partner?.userId : chat.user.userId;
+    chat.user.id == ctx.userData.id ? chat.partner?.userId : chat.user.userId;
   const partnerChat = await findUser(foundUserId);
 
   // Kirim pesan ke chat partner
   switch (messageType) {
     case "text":
-      // Check if message contains command
-      const containsCommand = ctx.message.text.toString().match(/\/\S+/g);
-      if (containsCommand) {
-        logger.info(`👤 User [${ctx.userId}]: Sent command to another user.`);
-        return;
-      }
-
       // Handle text
-      await ctx.telegram.sendMessage(
-        partnerChat.userId,
-        ctx.message.text.toString()
-      );
+      const reply = ctx.message.reply_to_message;
+      const messageText = !reply
+        ? ctx.message.text
+        : `Re: ${reply.text}\n---\n${ctx.message.text}`;
+      await ctx.telegram
+        .sendMessage(partnerChat.userId, messageText)
+        .then((response) => {
+          return saveMessage(chat.id, ctx.userData.id, response.message_id);
+        });
       break;
     case "sticker":
       // Handle sticker
-      const sticker = ctx.message.sticker.file_id;
-      await ctx.telegram.sendSticker(partnerChat.userId, sticker);
+      const stickerId = ctx.message.sticker.file_id;
+      await ctx.telegram
+        .sendSticker(partnerChat.userId, stickerId)
+        .then((response) => {
+          return saveMessage(chat.id, ctx.userData.id, response.message_id);
+        });
       break;
     case "photo":
       // Handle photo
-      const photo = ctx.message.photo[0].file_id;
-      await ctx.telegram.sendPhoto(partnerChat.userId, photo);
+      const photoId = ctx.message.photo[0].file_id;
+      await ctx.telegram.sendPhoto(partnerChat.userId, photoId, {
+        protect_content: true,
+      });
       break;
     case "voice":
       // Handle voice
-      const voice = ctx.message.voice.file_id;
-      await ctx.telegram.sendVoice(partnerChat.userId, voice);
+      const voiceId = ctx.message.voice.file_id;
+      await ctx.telegram.sendVoice(partnerChat.userId, voiceId, {
+        protect_content: true,
+      });
+      break;
     default:
       // Log error
-      logger.error(`👤 User [${ctx.userId}]: Message not supported!`);
-
-      // Kirim pesan ke user jika terjadi error 400
-      if (error.code == 400) {
-        await ctx.reply("Message not supported!");
-      }
-      break;
+      logger.error(`👤 User [${ctx.userData.userId}]: Message not supported!`);
+      throw new Error("Message not supported!");
   }
 };
 
@@ -93,6 +96,7 @@ bot.command("unblock", unblockCommand);
 bot.command("end", endCommand);
 bot.command("help", helpCommand);
 bot.command("bot", botCommand);
+bot.command("ping", pingCommand);
 
 // Text handler
 bot.on(message("text"), async (ctx) => {
