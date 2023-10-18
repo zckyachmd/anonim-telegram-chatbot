@@ -36,8 +36,7 @@ const middleware = async (ctx, next) => {
       }
 
       // Add user to ctx
-      ctx.id = existingUser.id;
-      ctx.userId = existingUser.userId;
+      ctx.userData = existingUser;
     });
 
     // Show log in console
