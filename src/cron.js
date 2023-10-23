@@ -59,13 +59,12 @@ createCronJob("0 0 * * *", function () {
   });
 });
 
-// Delete chat ended without partnerId every 5 minutes
-createCronJob("*/5 * * * *", function () {
+// Delete chat ended without partnerId every 1 hour
+createCronJob("* 1 * * *", function () {
   logger.info("🧹 Deleting chat ended without partnerId...");
   prisma.chat.deleteMany({
     where: {
-      partnerId: null,
-      status: "ended",
+      partnerId: null
     },
   });
 });
