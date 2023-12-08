@@ -8,7 +8,8 @@
     "start": "pm2 start app.js --name anonim-chatbot && pm2 log anonim-chatbot",
     "stop": "pm2 stop anonim-chatbot",
     "restart": "pm2 restart anonim-chatbot && pm2 log anonim-chatbot",
-    "dev": "pm2 start app.js --name anonim-chatbot --watch --time && pm2 monit"
+    "dev": "pm2 start app.js --name anonim-chatbot --watch --time && pm2 monit",
+    "prisma": "npx prisma migrate dev --name init --preview-feature"
   },
   "keywords": [
     "telegram",
