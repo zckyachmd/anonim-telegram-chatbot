@@ -1,45 +1,48 @@
 # Anonim Chatbot
 
-Anonim Chatbot adalah aplikasi pesan instan yang memungkinkan pengguna untuk berkomunikasi dengan bot tanpa harus memberikan informasi identitas mereka. Dengan desain yang intuitif dan antarmuka yang ramah pengguna, Anonim Chatbot memungkinkan pengguna untuk bertukar pesan dengan bot tanpa takut akan pengungkapan data pribadi.
+Anonymous Chatbot is an instant messaging application that allows users to communicate with a bot without having to provide their identity information. With an intuitive design and user-friendly interface, Anonymous Chatbot enables users to exchange messages with the bot without fearing the disclosure of personal data.
 
 ## Requirements
 
-- [Node.js](https://nodejs.org/en/)
-- [PostgreSQL](https://www.postgresql.org/)
 - [Telegram BOT API](https://core.telegram.org/bots/api)
+- [Node.js](https://nodejs.org/en/)
+- [Prisma](https://www.prisma.io/)
+- [Docker](https://www.docker.com/)
 
 ## Installation
 
-1. Clone repository ini ke direktori lokal
+You can run the application using Docker. Follow the steps below to get started:
 
+1. Clone this repository to your local directory:
 ```bash
-git clone https://github.com/zckyachmd/anonim-chatbot
+git clone https://github.com/zckyachmd/anonim-telegram-chatbot
 ```
 
-2. Masuk ke direktori repository
-
+2. Navigate to the repository directory:
 ```bash
-cd anonim-chatbot
+cd anonim-telegram-chatbot
 ```
 
-3. Buat file `.env` dan isi dengan konfigurasi yang dibutuhkan
-
+3. Create a .env file and fill it with the required configurations:
 ```bash
 cp .env.example .env
 ```
 
-4. Install dependencies
-
+4. Configure your .env file with your database credentials and other settings.
+5. Build the Docker image (if using Dockerfile):
 ```bash
-npm install
+docker build -t anonim-telegram-chatbot .
 ```
 
-5. Jalankan aplikasi
-
+6. Run the container (if using Dockerfile):
 ```bash
-npm start
+docker run -d --name anonim-telegram-chatbot anonim-telegram-chatbot
 ```
+
+## Contribution
+
+Contributions are welcome! Feel free to submit pull requests or open issues for any bugs or feature requests.
 
 ## License
 
-Hak Cipta © 2023 oleh [Zacky Achmad](https://github.com/zckyachmd). Perangkat lunak ini dilisensikan di bawah [MIT License](LICENSE.md).
+Copyright © 2024 oleh [Zacky Achmad](https://github.com/zckyachmd). This software is licensed under the [MIT License](LICENSE.md).

@@ -1,60 +1,51 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-// Users model
 model User {
   id        Int      @id @default(autoincrement())
   userId    String   @unique
-  username  String?  @unique
-  language  String?  @default("en")
+  username  String?
+  language  String?
+  isBot     Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relasi table
-  chats    Chat[]  @relation("chats")
-  partners Chat[]  @relation("partner")
-  users    Block[] @relation("users")
-  blocked  Block[] @relation("blocked")
+  messages      Message[] @relation("UserMessages")
+  chatsStarted  Chat[]    @relation("UserChatsStarted")
+  chatsReceived Chat[]    @relation("UserChatsReceived")
 }
 
-// Enum untuk status chat
-enum ChatStatus {
-  active
-  waiting
-  ended
+model Message {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  messageId  Int      @unique
+  responseId Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation("UserMessages", fields: [userId], references: [id])
 }
 
-// Chat model for connecting two users
 model Chat {
-  id        Int        @id @default(autoincrement())
-  userId    Int
-  partnerId Int?
-  status    ChatStatus
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  // Relasi table
-  user    User  @relation("chats", fields: [userId], references: [id])
-  partner User? @relation("partner", fields: [partnerId], references: [id])
-}
-
-// Block model for blocking user from chat
-model Block {
   id        Int      @id @default(autoincrement())
   userId    Int
-  blockedId Int
+  partnerId Int?
+  status    String   @default("searching")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relasi table
-  user    User @relation("users", fields: [userId], references: [id])
-  blocked User @relation("blocked", fields: [blockedId], references: [id])
+  user    User  @relation("UserChatsStarted", fields: [userId], references: [id])
+  partner User? @relation("UserChatsReceived", fields: [partnerId], references: [id])
 }
