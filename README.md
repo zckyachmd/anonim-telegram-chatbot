@@ -1,6 +1,6 @@
-# Anonim Chatbot
+# Anonim Telegram Chatbot
 
-Anonymous Chatbot is an instant messaging application that allows users to communicate with a bot without having to provide their identity information. With an intuitive design and user-friendly interface, Anonymous Chatbot enables users to exchange messages with the bot without fearing the disclosure of personal data.
+The Anonim Telegram Chatbot operates within the Telegram platform, facilitating anonymous connections between users without the need for sharing personal information. Users can engage in random and confidential interactions while maintaining their privacy, enabling seamless connections with others without revealing their identity.
 
 ## Requirements
 
